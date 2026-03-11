@@ -1,0 +1,15 @@
+numpy
+scikit-learn
+pandas
+langchain>=1.1.0
+langchain-openai
+python-dotenv
+langchain_core
+langgraph
+fastapi
+uvicorn
+websockets
+#TEMPORARY
+streamlit
+pyvis
+pandas
