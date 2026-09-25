@@ -73,8 +73,8 @@ const App: React.FC = () => {
     const connect = () => {
       console.log("🔌 Initializing Command Center Streams...");
       
-      const tSocket = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
-      const aSocket = new WebSocket("ws://127.0.0.1:8000/ws/agent");
+      const tSocket = new WebSocket("wss://nova-backend-abc.onrender.com/ws/telemetry");
+      const aSocket = new WebSocket("wss://nova-backend-abc.onrender.com/ws/agent");
 
       // Telemetry Stream
       tSocket.onmessage = (event) => {
