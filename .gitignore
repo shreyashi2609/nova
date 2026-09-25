@@ -7,8 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-nova/node_modules
-dist
+C:\Users\shrey\Downloads\nova\frontend\node_modulesdist
 dist-ssr
 *.local
 

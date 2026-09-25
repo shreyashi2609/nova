@@ -11,8 +11,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the backend code
 COPY . .
 
-# Expose the port Cloud Run expects
+# Render injects its own PORT env var at runtime and routes traffic to it;
+# 8080 is just the local fallback for testing the image directly.
 EXPOSE 8080
+ENV PORT=8080
 
-# Command to run FastAPI with Uvicorn (WebSockets supported)
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
+# Shell form (not exec/list form) so $PORT is actually expanded at container
+# start — Render sets this dynamically, and exec-form CMD would pass the
+# literal string "$PORT" to uvicorn and fail to bind.
+CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}

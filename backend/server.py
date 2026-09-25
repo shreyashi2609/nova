@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import threading
 from typing import List, Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,7 @@ import uvicorn
 # Import your agent components
 from agent import app as langgraph_app
 from agent import NetworkAgentState, ml_intel
+from logger import run_simulator
 
 app = FastAPI(title="Neurotech NOC Backend")
 
@@ -143,10 +145,28 @@ async def approve_action(decision: Dict):
     approval_request.set()
     return {"status": "resumed"}
 
+@app.get("/")
+async def root():
+    """Simple health-check endpoint so Render's health checks (and you) can confirm the service is up."""
+    return {
+        "status": "ok",
+        "service": "Neurotech NOC Backend",
+        "telemetry_records_buffered": len(telemetry_buffer),
+        "agent_log_entries": len(agent_log_buffer),
+    }
+
+
 @app.on_event("startup")
 async def startup_event():
+    # Telemetry generation is blocking (time.sleep-based), so it runs in its
+    # own daemon thread rather than as an asyncio task — this is what makes
+    # the whole system self-sufficient on Render: no separate process or
+    # manual `python logger.py` step is needed.
+    threading.Thread(target=run_simulator, kwargs={"verbose": True}, daemon=True).start()
     asyncio.create_task(tail_log_file())
     asyncio.create_task(run_autonomous_agent())
 
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level = "warning")
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")

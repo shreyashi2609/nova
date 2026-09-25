@@ -236,10 +236,17 @@ def generate_telemetry(scenario="normal", device_override=None):
     return payload
 
 
-def main():
-    print("📡 Neurotech Telemetry Simulator — Enhanced v2")
-    print("Scenarios: NORMAL, FIBER_CUT, BGP_FLAP, DDOS_ATTACK, "
-          "HARDWARE_DEGRADATION, PEAK_CONGESTION, DNS_FAILURE, LINK_FLAP\n")
+def run_simulator(verbose: bool = True):
+    """
+    Runs the telemetry simulation loop forever (blocking).
+    Safe to call from a background thread — e.g. server.py starts this
+    in a daemon thread on startup so telemetry flows automatically
+    without a separate process needing to be run manually.
+    """
+    if verbose:
+        print("📡 Neurotech Telemetry Simulator — Enhanced v2")
+        print("Scenarios: NORMAL, FIBER_CUT, BGP_FLAP, DDOS_ATTACK, "
+              "HARDWARE_DEGRADATION, PEAK_CONGESTION, DNS_FAILURE, LINK_FLAP\n")
 
     scenarios = [
         "normal", "fiber_cut", "bgp_flap", "ddos_attack",
@@ -254,11 +261,9 @@ def main():
         "CRITICAL": "\033[91m",
     }
 
-    try:
-        while True:
+    while True:
+        try:
             current_mode = random.choices(scenarios, weights=weights, k=1)[0]
-            
-            # current_mode = "ddos_attack"
 
             # Burst mode for high-impact events
             burst = random.randint(10, 40) if current_mode in ("ddos_attack", "fiber_cut") else random.randint(1, 3)
@@ -267,22 +272,34 @@ def main():
                 t = generate_telemetry(scenario=current_mode)
                 logger.info(json.dumps(t))
 
-                c   = COLOR.get(t["status"], "\033[0m")
-                m   = t["metrics"]
-                bgp = f" | BGP flaps:{t['bgp']['flap_count_1h']}" if "bgp" in t else ""
-                print(
-                    f"{c}[{t["scenario_tag"]}] "
-                    f"{t['device_id']:<30} | {t['status']:<8} | "
-                    f"Lat:{m['latency_ms']:>5}ms | Loss:{m['packet_loss_pct']:>5}% | "
-                    f"Util:{m['utilization_pct']:>5}% | CPU:{m['cpu_util_pct']:>5}% | "
-                    f"Temp:{m['cpu_temp_c']:>2}°C{bgp}"
-                    f"\033[0m"
-                )
+                if verbose:
+                    c   = COLOR.get(t["status"], "\033[0m")
+                    m   = t["metrics"]
+                    bgp = f" | BGP flaps:{t['bgp']['flap_count_1h']}" if "bgp" in t else ""
+                    print(
+                        f"{c}[{t['scenario_tag']}] "
+                        f"{t['device_id']:<30} | {t['status']:<8} | "
+                        f"Lat:{m['latency_ms']:>5}ms | Loss:{m['packet_loss_pct']:>5}% | "
+                        f"Util:{m['utilization_pct']:>5}% | CPU:{m['cpu_util_pct']:>5}% | "
+                        f"Temp:{m['cpu_temp_c']:>2}°C{bgp}"
+                        f"\033[0m"
+                    )
 
             time.sleep(1.0)
 
-    except KeyboardInterrupt:
-        print("\n⏹  Simulation stopped.")
+        except KeyboardInterrupt:
+            if verbose:
+                print("\n⏹  Simulation stopped.")
+            break
+        except Exception as exc:
+            # Never let the background thread die silently — log and keep going.
+            if verbose:
+                print(f"⚠ Simulator error (continuing): {exc}")
+            time.sleep(1.0)
+
+
+def main():
+    run_simulator(verbose=True)
 
 
 if __name__ == "__main__":
